@@ -19,6 +19,7 @@ def before_request():
         current_user.last_seen = datetime.now(timezone.utc)
         db.session.commit()
 
+
 @app.route("/edit_profile", methods=['GET', 'POST'])
 @login_required
 def edit_profile():
@@ -32,7 +33,11 @@ def edit_profile():
     elif request.method == "GET":
         form.username.data = current_user.username
         form.about_me.data = current_user.about_me
-    return render_template("edit_profile.html", title="Edit Profile", form=form)
+    return render_template(
+                            "edit_profile.html",
+                            title="Edit Profile", form=form
+                            )
+
 
 @app.route("/", methods=['GET', 'POST'])
 @app.route("/index", methods=['GET', 'POST'])
@@ -45,9 +50,24 @@ def index():
         db.session.commit()
         flash('Your post is now live!')
         return redirect(url_for('index'))
-
-    posts = db.session.scalars(current_user.following_posts()).all()
-    return render_template("index.html", title=None, posts=posts, form=form)
+    page = request.args.get('page', 1, type=int)
+    posts = db.paginate(current_user.following_posts(),
+                        page=page,
+                        per_page=app.config['POSTS_PER_PAGE'],
+                        error_out=False
+                        )
+    print(f"NUMS: PREV: {posts.prev_num} NEXT: {posts.next_num}")
+    next_url = url_for('index', page=posts.next_num) \
+        if posts.has_next else None
+    prev_url = url_for('index', page=posts.prev_num) \
+        if posts.has_prev else None
+    return render_template(
+                            "index.html",
+                            title=None,
+                            posts=posts.items,
+                            form=form,
+                            next_url=next_url,
+                            prev_url=prev_url)
 
 
 @app.route("/login", methods=['GET', 'POST'])
@@ -83,7 +103,6 @@ def register():
         return redirect(url_for('index'))
     form = RegistrationForm()
     if form.validate_on_submit():
-        print('a')
         user = User(username=form.username.data, email=form.email.data)
         user.set_password(form.password.data)
         db.session.add(user)
@@ -97,12 +116,26 @@ def register():
 @login_required
 def user(username):
     user = db.first_or_404(sa.select(User).where(User.username == username))
-    posts = [
-        {'author': user, 'body': 'Test text1'},
-        {'author': user, 'body': 'Test text2'}
-    ]
+    page = request.args.get('page', 1, type=int)
+    query = user.posts.select().order_by(Post.timestamp.desc())
+    posts = db.paginate(query, page=page,
+                        per_page=app.config['POSTS_PER_PAGE'],
+                        error_out=False)
+    next_url = url_for('user', username=user.username, page=posts.next_num) \
+        if posts.has_next else None
+    prev_url = url_for('user', username=user.username, page=posts.prev_num) \
+        if posts.has_prev else None
+
     form = EmptyForm()
-    return render_template('user.html', user=user, posts=posts, form=form)
+    return render_template(
+                            'user.html',
+                            user=user,
+                            posts=posts.items,
+                            next_url=next_url,
+                            prev_url=prev_url,
+                            form=form
+                        )
+
 
 @app.route("/follow/<username>", methods=['POST'])
 @login_required
@@ -125,6 +158,7 @@ def follow(username):
     else:
         return redirect(url_for('index'))
 
+
 @app.route("/unfollow/<username>", methods=['POST'])
 @login_required
 def unfollow(username):
@@ -146,9 +180,26 @@ def unfollow(username):
     else:
         return redirect(url_for('index'))
 
+
 @app.route("/explore")
 @login_required
 def explore():
     query = sa.select(Post).order_by(Post.timestamp.desc())
-    posts =db.session.scalars(query).all()
-    return render_template('index.html', title='Explore', posts=posts)
+    page = request.args.get('page', 1, type=int)
+    posts = db.session.scalars(query).all()
+    posts = db.paginate(
+        query,
+        page=page,
+        per_page=app.config['POSTS_PER_PAGE'],
+        error_out=False
+    )
+    next_url = url_for('index', page=posts.next_num) \
+        if posts.has_next else None
+    prev_url = url_for('index', page=posts.prev_num) \
+        if posts.has_prev else None
+    return render_template(
+                            'index.html', title='Explore',
+                            posts=posts.items,
+                            next_url=next_url,
+                            prev_url=prev_url
+                            )
