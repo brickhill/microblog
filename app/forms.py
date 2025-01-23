@@ -9,6 +9,7 @@ from wtforms.validators import DataRequired, ValidationError, Email, EqualTo, \
 import sqlalchemy as sa
 from app import db
 from app.models import User
+from flask_babel import lazy_gettext as _l
 
 
 class EditProfileForm(FlaskForm):
@@ -30,7 +31,7 @@ class EditProfileForm(FlaskForm):
 
 
 class LoginForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired()])
+    username = StringField(_l('Username'), validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
     remember_me = BooleanField('Remember Me')
     submit = SubmitField('Sign in')

@@ -8,14 +8,22 @@ from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_mail import Mail
 from flask_moment import Moment
+from flask import request
+from flask_babel import Babel
+from flask_babel import lazy_gettext as _l
 import logging
 from logging.handlers import SMTPHandler, RotatingFileHandler
 import os
 
+def get_locale():
+    return request.accept_languages.best_match(app.config['LANGUAGES'])
+
 app = Flask(__name__)
 app.config.from_object(Config)
 login = LoginManager(app)
+babel = Babel(app, locale_selector=get_locale)
 login.login_view = 'login'
+login.login_message = _l('Please login to access this page')
 # print(app.config)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)

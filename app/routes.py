@@ -7,6 +7,7 @@ from app.forms import LoginForm, RegistrationForm, \
     EditProfileForm, EmptyForm, PostForm, ResetPasswordRequestForm, \
     ResetPasswordForm
 from flask_login import current_user, login_user, login_required, logout_user
+from flask_babel import _
 import sqlalchemy as sa
 from app import db
 from app.models import User, Post
@@ -50,7 +51,7 @@ def index():
         post = Post(body=form.post.data, author=current_user)
         db.session.add(post)
         db.session.commit()
-        flash('Your post is now live!')
+        flash(_('Your post is now live!'))
         return redirect(url_for('index'))
     page = request.args.get('page', 1, type=int)
     posts = db.paginate(current_user.following_posts(),
@@ -148,7 +149,7 @@ def follow(username):
             sa.select(User).where(User.username == username)
         )
         if user is None:
-            flash(f"User:{username} not found")
+            flash(_("User:%(username)s not found", username=username))
             return redirect(url_for('index'))
         if user == current_user:
             flash("You cannot follow yourself")
